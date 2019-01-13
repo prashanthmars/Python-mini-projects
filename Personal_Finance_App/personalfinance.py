@@ -108,6 +108,7 @@ class jarvismoneymanager:
 		
 		import mysql.connector as mysqlcon
 		import datetime as dt
+		import pandas
 		
 		mydb = mysqlcon.connect(
 			host="localhost",
@@ -129,6 +130,13 @@ class jarvismoneymanager:
 				transactionsummary[eachentry[1].strftime("%Y-%m")]-=eachentry[5]
 			else:
 				next
+		
+		#budget summary in a csv
+		filename="budgetsummary.csv"
+		transactionsummary_csv=[(x,y) for x,y in transactionsummary.items()]
+		pd = pandas.DataFrame(list(transactionsummary_csv))
+		pd.to_csv("budgetsummary.csv")
+		
 		return(transactionsummary)
 
 	
@@ -138,7 +146,7 @@ class jarvismoneymanager:
 		input_itemname=input("enter the name of the item\n")
 		input_iteminfo=input("enter additional information of the item\n")
 		input_category=input("enter the category of the item: credit or debit\n")
-		input_amount=float(input("enter the transaction\n"))
+		input_amount=float(input("enter the transaction amount\n"))
 		
 		import mysql.connector as mysqlcon
 		mydb = mysqlcon.connect(
@@ -158,6 +166,58 @@ class jarvismoneymanager:
 		mycursor.executemany(sql,val)
 		mydb.commit()
 		print("added transaction into database")
+	
+	def edittransaction(self):
+		
+		chosentransactionid=int(input("enter the transaction id\n"))
+		
+		
+		import mysql.connector as mysqlcon
+		mydb = mysqlcon.connect(
+			host="localhost	",
+			user="root",
+			passwd="",
+			database='personalfinance'
+		)
+		
+		mycursor = mydb.cursor()
+		sql="SELECT * FROM alltransactions WHERE id = %s"
+		mycursor.execute(sql,(chosentransactionid,))
+		myresult = mycursor.fetchall()[0]
+		print("The below transaction would be picked up for editing")
+		print(myresult)
+		
+		input_date=input("enter the transaction date. Just type enter to skip / no change.\n")
+		if input_date=="":
+			input_date=str(myresult[1])
+		
+		input_itemname=input("enter the name of the item. Just type enter to skip / no change.\n")
+		if input_itemname=="":
+			input_itemname=myresult[2]
+		
+		input_iteminfo=input("enter additional information of the item. Just type enter to skip / no change.\n")
+		if input_iteminfo=="":
+			input_iteminfo=myresult[3]
+		
+		input_category=input("enter the category of the item: credit or debit. Just type enter to skip / no change.\n")
+		if input_category=="":
+			input_category=myresult[4]
+			
+		input_amount=input("enter the transaction amount. Just type enter to skip / no change.\n")
+		if input_amount=='':
+			input_amount=float(myresult[5])
+		else:
+			input_amount=float(input_amount)
+		
+		sql = "UPDATE alltransactions SET transactiondate = %s, Itemname = %s, Iteminfo = %s, category = %s, amount = %s WHERE id=%s"
+		val = [
+			(input_date,input_itemname,input_iteminfo,input_category,input_amount,chosentransactionid),
+		]
+
+		mycursor.executemany(sql,val)
+		mydb.commit()
+		print("updated transaction into database")
+		
 		
 ##########################JARVIS IN ACTION#######################################################
 		
@@ -166,25 +226,29 @@ myjarvis=jarvismoneymanager()
 print("Good morning")
 while 1:
 	print("select the appropriate nos for the transaction")
-	transactiontype=int(input("1: Add a new transaction \n2: Summary: By category\n3: Summary: By Item\n4: Summary: By Year-Month\n5: All Transactions\n9: Exit App\n"))
+	transactiontype=int(input("1: Add a new transaction\n2: Edit Transaction\n3: Summary: By category\n4: Summary: By Item\n5: Summary: By Year-Month\n6: All Transactions\n9: Exit App\n"))
 	
 	if transactiontype==1:
 		print("transaction for add")
 		myjarvis.addtransaction()
 	
 	elif transactiontype==2:
+		print("Edit a specific transaction")
+		myjarvis.edittransaction()
+	
+	elif transactiontype==3:
 		print("Summary of all transaction by categories")
 		print(myjarvis.summary_category())
 		
-	elif transactiontype==3:
+	elif transactiontype==4:
 		print("Summary of all transaction by item")
 		print(myjarvis.summary_item())
 		
-	elif transactiontype==4:
+	elif transactiontype==5:
 		print("Summary of all transaction by year-month")
 		print(myjarvis.summary_yearmon())
 		
-	elif transactiontype==5:
+	elif transactiontype==6:
 		print("Detailed list of all transactions")
 		print(myjarvis)
 		
