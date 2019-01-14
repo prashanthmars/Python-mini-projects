@@ -60,31 +60,12 @@ class jarvismoneymanager:
 		mycursor.execute(sql)
 		myresult = mycursor.fetchall()
 		return (str(myresult))
-	
-	def summary_category(self):
-		
-		import mysql.connector as mysqlcon
-		mydb = mysqlcon.connect(
-			host="localhost",
-			user="root",
-			passwd="",
-			database='personalfinance'
-		)
-		
-		mycursor = mydb.cursor()
-		sql="SELECT * FROM alltransactions"
-		mycursor.execute(sql)
-		myresult = mycursor.fetchall()
-		transactionsummary={x[4]:0 for x in myresult}
-		for eachentry in myresult:
-			transactionsummary[eachentry[4]]+=eachentry[5]
-		
-		return(transactionsummary)
-	
 
 	def summary_item(self):
 		
 		import mysql.connector as mysqlcon
+		import datetime as dt
+		import pandas
 		
 		mydb = mysqlcon.connect(
 			host="localhost",
@@ -97,9 +78,28 @@ class jarvismoneymanager:
 		sql="SELECT * FROM alltransactions"
 		mycursor.execute(sql)
 		myresult = mycursor.fetchall()
-		transactionsummary={x[2]:0 for x in myresult}
+		transactionsummary={x[2]:{x[1].strftime("%Y-%m"):{
+			'planned':{'credit':0,'debit':0},
+			'actual':{'credit':0,'debit':0}
+		}} for x in myresult}
+			
 		for eachentry in myresult:
-			transactionsummary[eachentry[2]]+=eachentry[5]
+			if eachentry[4]=='pc':
+				transactionsummary[eachentry[2]][eachentry[1].strftime("%Y-%m")]['planned']['credit']+=eachentry[5]
+			elif eachentry[4]=='pd':
+				transactionsummary[eachentry[2]][eachentry[1].strftime("%Y-%m")]['planned']['debit']+=eachentry[5]
+			elif eachentry[4]=='c':
+				transactionsummary[eachentry[2]][eachentry[1].strftime("%Y-%m")]['actual']['credit']+=eachentry[5]
+			elif eachentry[4]=='d':
+				transactionsummary[eachentry[2]][eachentry[1].strftime("%Y-%m")]['actual']['debit']+=eachentry[5]
+			else:
+				next
+		
+		#budget summary in a csv
+		filename="budgetsummary_byitem.csv"
+		transactionsummary_csv=[(x,y) for x,y in transactionsummary.items()]
+		pd = pandas.DataFrame(list(transactionsummary_csv))
+		pd.to_csv(filename)
 		
 		return(transactionsummary)
 	
@@ -121,21 +121,29 @@ class jarvismoneymanager:
 		sql="SELECT * FROM alltransactions"
 		mycursor.execute(sql)
 		myresult = mycursor.fetchall()
-		transactionsummary={x[1].strftime("%Y-%m"):0 for x in myresult}
+		transactionsummary={}
+		transactionsummary={x[1].strftime("%Y-%m"):{
+		'planned':{'credit':0,'debit':0},
+		'actual':{'credit':0,'debit':0}
+		} for x in myresult}
 			
 		for eachentry in myresult:
-			if eachentry[4]=='credit':
-				transactionsummary[eachentry[1].strftime("%Y-%m")]+=eachentry[5]
-			elif eachentry[4]=='debit':
-				transactionsummary[eachentry[1].strftime("%Y-%m")]-=eachentry[5]
+			if eachentry[4]=='pc':
+				transactionsummary[eachentry[1].strftime("%Y-%m")]['planned']['credit']+=eachentry[5]
+			elif eachentry[4]=='pd':
+				transactionsummary[eachentry[1].strftime("%Y-%m")]['planned']['debit']+=eachentry[5]
+			elif eachentry[4]=='c':
+				transactionsummary[eachentry[1].strftime("%Y-%m")]['actual']['credit']+=eachentry[5]
+			elif eachentry[4]=='d':
+				transactionsummary[eachentry[1].strftime("%Y-%m")]['actual']['debit']+=eachentry[5]
 			else:
 				next
 		
 		#budget summary in a csv
-		filename="budgetsummary.csv"
+		filename="budgetsummary_byyearmon.csv"
 		transactionsummary_csv=[(x,y) for x,y in transactionsummary.items()]
 		pd = pandas.DataFrame(list(transactionsummary_csv))
-		pd.to_csv("budgetsummary.csv")
+		pd.to_csv(filename)
 		
 		return(transactionsummary)
 
@@ -145,9 +153,10 @@ class jarvismoneymanager:
 		input_date=input("enter the transaction date\n")
 		input_itemname=input("enter the name of the item\n")
 		input_iteminfo=input("enter additional information of the item\n")
-		input_category=input("enter the category of the item: credit or debit\n")
+		input_category=(input("enter the category of the item:\nc for credit\nd for debit\npc for planned-credit\npd for planned-debit\n")).lower()
 		input_amount=float(input("enter the transaction amount\n"))
 		
+		print(input_category)
 		import mysql.connector as mysqlcon
 		mydb = mysqlcon.connect(
 			host="localhost	",
@@ -199,7 +208,7 @@ class jarvismoneymanager:
 		if input_iteminfo=="":
 			input_iteminfo=myresult[3]
 		
-		input_category=input("enter the category of the item: credit or debit. Just type enter to skip / no change.\n")
+		input_category=(input("enter the category of the item:\nc for credit\nd for debit\npc for planned-credit\npd for planned-debit\n")).lower()
 		if input_category=="":
 			input_category=myresult[4]
 			
@@ -218,6 +227,13 @@ class jarvismoneymanager:
 		mydb.commit()
 		print("updated transaction into database")
 		
+		sql="SELECT * FROM alltransactions WHERE id = %s"
+		mycursor.execute(sql,(chosentransactionid,))
+		myresult = mycursor.fetchall()[0]
+		print("The transaction has been updated as follows")
+		print(myresult)
+		
+		
 		
 ##########################JARVIS IN ACTION#######################################################
 		
@@ -226,7 +242,7 @@ myjarvis=jarvismoneymanager()
 print("Good morning")
 while 1:
 	print("select the appropriate nos for the transaction")
-	transactiontype=int(input("1: Add a new transaction\n2: Edit Transaction\n3: Summary: By category\n4: Summary: By Item\n5: Summary: By Year-Month\n6: All Transactions\n9: Exit App\n"))
+	transactiontype=int(input("1: Add a new transaction\n2: Edit Transaction\n3: Summary: By Item\n4: Summary: By Year-Month\n5: All Transactions\n9: Exit App\n"))
 	
 	if transactiontype==1:
 		print("transaction for add")
@@ -235,20 +251,16 @@ while 1:
 	elif transactiontype==2:
 		print("Edit a specific transaction")
 		myjarvis.edittransaction()
-	
-	elif transactiontype==3:
-		print("Summary of all transaction by categories")
-		print(myjarvis.summary_category())
 		
-	elif transactiontype==4:
+	elif transactiontype==3:
 		print("Summary of all transaction by item")
 		print(myjarvis.summary_item())
 		
-	elif transactiontype==5:
+	elif transactiontype==4:
 		print("Summary of all transaction by year-month")
 		print(myjarvis.summary_yearmon())
 		
-	elif transactiontype==6:
+	elif transactiontype==5:
 		print("Detailed list of all transactions")
 		print(myjarvis)
 		
