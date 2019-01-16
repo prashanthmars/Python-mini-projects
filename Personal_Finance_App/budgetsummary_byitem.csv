@@ -1,5 +1,6 @@
 ,0,1
 0,salary,"{'2019-01': {'planned': {'credit': 150000.0, 'debit': 0}, 'actual': {'credit': 175999.0, 'debit': 0}}}"
-1,rent,"{'2019-01': {'planned': {'credit': 0, 'debit': 25000.0}, 'actual': {'credit': 0, 'debit': 26450.0}}}"
+1,rent,"{'2019-01': {'planned': {'credit': 0, 'debit': 25000.0}, 'actual': {'credit': 0, 'debit': 26550.0}}}"
 2,transportation,"{'2019-01': {'planned': {'credit': 0, 'debit': 150.0}, 'actual': {'credit': 0, 'debit': 0}}}"
 3,gift,"{'2019-01': {'planned': {'credit': 0, 'debit': 0}, 'actual': {'credit': 0, 'debit': 1001.0}}}"
+4,entertainment,"{'2019-01': {'planned': {'credit': 0, 'debit': 0}, 'actual': {'credit': 1960.0, 'debit': 0}}}"

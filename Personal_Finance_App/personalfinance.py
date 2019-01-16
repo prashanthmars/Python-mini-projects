@@ -147,7 +147,79 @@ class jarvismoneymanager:
 		
 		return(transactionsummary)
 
-	
+	def summary_bydate(self):
+		
+		import mysql.connector as mysqlcon
+		import datetime as dt
+		import pandas
+		
+		mydb = mysqlcon.connect(
+			host="localhost",
+			user="root",
+			passwd="",
+			database='personalfinance'
+		)
+		
+		mycursor = mydb.cursor()
+		sql="SELECT * FROM alltransactions"
+		mycursor.execute(sql)
+		myresult = mycursor.fetchall()
+		transactionsummary={}
+		transactionsummary={x[1].strftime("%Y-%m-%d"):{
+		'planned':{'credit':0,'debit':0},
+		'actual':{'credit':0,'debit':0}
+		} for x in myresult}
+			
+		for eachentry in myresult:
+			if eachentry[4]=='pc':
+				transactionsummary[eachentry[1].strftime("%Y-%m-%d")]['planned']['credit']+=eachentry[5]
+			elif eachentry[4]=='pd':
+				transactionsummary[eachentry[1].strftime("%Y-%m-%d")]['planned']['debit']+=eachentry[5]
+			elif eachentry[4]=='c':
+				transactionsummary[eachentry[1].strftime("%Y-%m-%d")]['actual']['credit']+=eachentry[5]
+			elif eachentry[4]=='d':
+				transactionsummary[eachentry[1].strftime("%Y-%m-%d")]['actual']['debit']+=eachentry[5]
+			else:
+				next
+		
+		#budget summary in a csv
+		filename="budgetsummary_bydate.csv"
+		transactionsummary_csv=[(x,y) for x,y in transactionsummary.items()]
+		pd = pandas.DataFrame(list(transactionsummary_csv))
+		pd.to_csv(filename)
+		
+		return(transactionsummary)
+
+	def summary_cumbydate(self):
+		
+		import datetime as dt
+		
+		result_bydate=self.summary_bydate()
+		cum_pd=0
+		cum_pc=0
+		cum_d=0
+		cum_c=0
+		
+		print([result_bydate.keys()])
+		temp=[x for x in result_bydate.keys()]
+		temp.sort()
+		print(temp)
+		
+		
+		for keys in temp:
+			cum_pd+=result_bydate[keys]['planned']['debit']
+			cum_pc+=result_bydate[keys]['planned']['credit']
+			cum_d+=result_bydate[keys]['actual']['debit']
+			cum_c+=result_bydate[keys]['actual']['credit']
+			
+			result_bydate[keys]['planned']['debit']=cum_pd
+			result_bydate[keys]['planned']['credit']=cum_pc
+			result_bydate[keys]['actual']['debit']=cum_d
+			result_bydate[keys]['actual']['credit']=cum_c
+			print (keys)
+		
+		return result_bydate
+		
 	def addtransaction(self):
 		
 		input_date=input("enter the transaction date\n")
@@ -242,7 +314,7 @@ myjarvis=jarvismoneymanager()
 print("Good morning")
 while 1:
 	print("select the appropriate nos for the transaction")
-	transactiontype=int(input("1: Add a new transaction\n2: Edit Transaction\n3: Summary: By Item\n4: Summary: By Year-Month\n5: All Transactions\n9: Exit App\n"))
+	transactiontype=int(input("1: Add a new transaction\n2: Edit Transaction\n3: Summary: By Item\n4: Summary: By Year-Month\n5: Summary: By Date\n6: Summary: Running Cummulative Total By Date\n7: All Transactions\n9: Exit App\n"))
 	
 	if transactiontype==1:
 		print("transaction for add")
@@ -259,8 +331,16 @@ while 1:
 	elif transactiontype==4:
 		print("Summary of all transaction by year-month")
 		print(myjarvis.summary_yearmon())
-		
+	
 	elif transactiontype==5:
+		print("Summary of all transaction by Date")
+		print(myjarvis.summary_bydate())
+	
+	elif transactiontype==6:
+		print("Summary of all transaction: Running Cummulative Total by Date")
+		print(myjarvis.summary_cumbydate())
+		
+	elif transactiontype==7:
 		print("Detailed list of all transactions")
 		print(myjarvis)
 		
