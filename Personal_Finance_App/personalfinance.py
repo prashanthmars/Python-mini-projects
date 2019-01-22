@@ -152,6 +152,8 @@ class jarvismoneymanager:
 		import mysql.connector as mysqlcon
 		import datetime as dt
 		import pandas
+
+		from operator import itemgetter
 		
 		mydb = mysqlcon.connect(
 			host="localhost",
@@ -164,6 +166,11 @@ class jarvismoneymanager:
 		sql="SELECT * FROM alltransactions"
 		mycursor.execute(sql)
 		myresult = mycursor.fetchall()
+		myresult=sorted(myresult,key=itemgetter(1))
+
+		#transactiondates=[x[1] for x in myresult]
+		#transactiondates.sort()
+
 		transactionsummary={}
 		transactionsummary={x[1].strftime("%Y-%m-%d"):{
 		'planned':{'credit':0,'debit':0},
@@ -200,13 +207,10 @@ class jarvismoneymanager:
 		cum_d=0
 		cum_c=0
 		
-		print([result_bydate.keys()])
-		temp=[x for x in result_bydate.keys()]
-		temp.sort()
-		print(temp)
+		datekeys=[x for x in result_bydate.keys()]
 		
 		
-		for keys in temp:
+		for keys in datekeys:
 			cum_pd+=result_bydate[keys]['planned']['debit']
 			cum_pc+=result_bydate[keys]['planned']['credit']
 			cum_d+=result_bydate[keys]['actual']['debit']
